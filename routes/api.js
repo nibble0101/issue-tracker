@@ -1,24 +1,28 @@
 "use strict";
 
-const db = require("../db/db");
-const { getDate, getId } = require("../utils/utils");
+const { getDate, getId, readData, writeData } = require("../utils/utils");
 
 module.exports = function (app) {
   app
     .route("/api/issues/:project")
 
-    .get(function (req, res) {
+    .get(async function (req, res) {
       const { project } = req.params;
-
-      if (!db.hasOwnProperty(project)) {
+      
+      const data = await readData();
+      console.log('Inside get request')
+      console.log(data);
+      if (!data.hasOwnProperty(project)) {
         return res.send({ result: "Project doesn't exist" });
       }
+
       const { query } = req;
+
       if (Object.keys(query).length === 0) {
-        return res.json(db[project]);
+        return res.json(data[project]);
       }
 
-      const filteredIssuesArr = db[project].filter((issueObj) => {
+      const filteredIssuesArr = data[project].filter((issueObj) => {
         for (const field in query) {
           if (query[field] !== issueObj[field]) return false;
         }
@@ -28,10 +32,10 @@ module.exports = function (app) {
       return res.json(filteredIssuesArr);
     })
 
-    .post(function (req, res) {
+    .post(async function (req, res) {
       const { project } = req.params;
       const { body } = req;
-
+      console.log('Inside post request')
       if (
         !body.hasOwnProperty("issue_title") ||
         !body.hasOwnProperty("issue_text") ||
@@ -54,37 +58,43 @@ module.exports = function (app) {
       body.updated_on = date;
       body.open = true;
 
-      if (!db.hasOwnProperty(project)) {
-        db[project] = [body];
+      const data = await readData();
+
+      if (!data.hasOwnProperty(project)) {
+        data[project] = [body];
+        await writeData(data);
         return res.json(body);
       }
 
-      db[project].push(body);
+      data[project].push(body);
+      await writeData(data);
       res.json(body);
     })
 
-    .put(function (req, res) {
+    .put(async function (req, res) {
       try {
         const { project } = req.params;
-        if (!db.hasOwnProperty(project)) {
-          return res.json({ result: "Project doesn't exist" });
-        }
         const { body } = req;
         const { _id } = body;
-
+        console.log('Inside put request')
         if (!body.hasOwnProperty("_id")) {
           return res.json({ error: "missing _id" });
         }
-
         if (Object.keys(body).length === 1) {
           return res.json({ error: "no update field(s) sent", _id });
         }
 
-        const issueIndex = db[project].findIndex((issueObj) => {
+        const data = await readData();
+
+        if (!data.hasOwnProperty(project)) {
+          return res.json({ result: "Project doesn't exist" });
+        }
+
+        const issueIndex = data[project].findIndex((issueObj) => {
           return _id === issueObj._id;
         });
 
-        const issueObj = db[project][issueIndex];
+        const issueObj = data[project][issueIndex];
 
         for (const field in body) {
           if (issueObj.hasOwnProperty(field)) {
@@ -92,27 +102,30 @@ module.exports = function (app) {
           }
         }
 
-        db[project][issueIndex] = issueObj;
+        data[project][issueIndex] = issueObj;
+        await writeData(data);
         return res.json({ result: "successfully updated", _id });
       } catch (error) {
         return res.json({ error: "could not update", _id: req.body._id });
       }
     })
 
-    .delete(function (req, res) {
+    .delete(async function (req, res) {
       try {
         const { project } = req.params;
-
-        if (!db.hasOwnProperty(project)) {
-          return res.json({ result: "Project doesn't exist" });
-        }
         const { _id } = req.body;
-
+        console.log('Inside delete request')
         if (!_id) {
           return res.json({ error: "missing _id" });
         }
 
-        const issueIndex = db[project].findIndex(
+        const data = await readData();
+
+        if (!data.hasOwnProperty(project)) {
+          return res.json({ result: "Project doesn't exist" });
+        }
+
+        const issueIndex = data[project].findIndex(
           (issueObj) => issueObj._id === _id
         );
 
@@ -121,7 +134,8 @@ module.exports = function (app) {
           return res.json({ error: "could not delete", _id: _id });
         }
 
-        db[project].splice(issueIndex, 1);
+        data[project].splice(issueIndex, 1);
+        await writeData(data);
         return res.json({ result: "successfully deleted", _id });
       } catch (error) {
         return res.json({ error: "could not delete", _id: req.body._id });
