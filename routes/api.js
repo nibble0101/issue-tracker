@@ -8,10 +8,9 @@ module.exports = function (app) {
 
     .get(async function (req, res) {
       const { project } = req.params;
-      
+
       const data = await readData();
-      console.log('Inside get request')
-      console.log(data);
+
       if (!data.hasOwnProperty(project)) {
         return res.send({ result: "Project doesn't exist" });
       }
@@ -35,7 +34,7 @@ module.exports = function (app) {
     .post(async function (req, res) {
       const { project } = req.params;
       const { body } = req;
-      console.log('Inside post request')
+
       if (
         !body.hasOwnProperty("issue_title") ||
         !body.hasOwnProperty("issue_text") ||
@@ -76,10 +75,11 @@ module.exports = function (app) {
         const { project } = req.params;
         const { body } = req;
         const { _id } = body;
-        console.log('Inside put request')
+
         if (!body.hasOwnProperty("_id")) {
           return res.json({ error: "missing _id" });
         }
+
         if (Object.keys(body).length === 1) {
           return res.json({ error: "no update field(s) sent", _id });
         }
@@ -87,20 +87,25 @@ module.exports = function (app) {
         const data = await readData();
 
         if (!data.hasOwnProperty(project)) {
-          return res.json({ result: "Project doesn't exist" });
+          return res.json({ error: "could not update", _id });
         }
 
         const issueIndex = data[project].findIndex((issueObj) => {
           return _id === issueObj._id;
         });
+        if (issueIndex < 0) {
+          return res.json({ error: "could not update", _id });
+        }
 
         const issueObj = data[project][issueIndex];
 
         for (const field in body) {
           if (issueObj.hasOwnProperty(field)) {
-            issueObj[prop] = body[field];
+            issueObj[field] = body[field];
           }
         }
+
+        issueObj.updated_on = getDate();
 
         data[project][issueIndex] = issueObj;
         await writeData(data);
@@ -114,7 +119,7 @@ module.exports = function (app) {
       try {
         const { project } = req.params;
         const { _id } = req.body;
-        console.log('Inside delete request')
+
         if (!_id) {
           return res.json({ error: "missing _id" });
         }
