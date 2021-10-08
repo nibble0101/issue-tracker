@@ -42,6 +42,13 @@ module.exports = function(app) {
       ) {
         return res.json({ error: "required field(s) missing" });
       }
+      if (
+        !body.issue_title.trim() ||
+        !body.issue_text.trim() ||
+        !body.created_by.trim()
+      ) {
+        return res.json({ error: "required field(s) missing" });
+      }
 
       if (!body.hasOwnProperty("assigned_to")) {
         body.assigned_to = "";
