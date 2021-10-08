@@ -1,16 +1,20 @@
 "use strict";
 
-const { getDate, getId, readData, writeData } = require("../utils/utils");
+// const { getDate, getId, readData, writeData } = require("../utils/utils");
+const { getDate, getId } = require("../utils/utils");
+const data = require("../db/db");
 
-module.exports = function (app) {
+
+module.exports = function(app) {
   app
     .route("/api/issues/:project")
 
-    .get(async function (req, res) {
+    .get(async function(req, res) {
       const { project } = req.params;
 
-      const data = await readData();
+      // const data = await readData();
 
+      console.log(data);
       if (!data.hasOwnProperty(project)) {
         return res.send({ result: "Project doesn't exist" });
       }
@@ -31,7 +35,7 @@ module.exports = function (app) {
       return res.json(filteredIssuesArr);
     })
 
-    .post(async function (req, res) {
+    .post(async function(req, res) {
       const { project } = req.params;
       const { body } = req;
 
@@ -57,20 +61,20 @@ module.exports = function (app) {
       body.updated_on = date;
       body.open = true;
 
-      const data = await readData();
+      // const data = await readData();
 
       if (!data.hasOwnProperty(project)) {
         data[project] = [body];
-        await writeData(data);
+        // await writeData(data);
         return res.json(body);
       }
 
       data[project].push(body);
-      await writeData(data);
+      // await writeData(data);
       res.json(body);
     })
 
-    .put(async function (req, res) {
+    .put(async function(req, res) {
       try {
         const { project } = req.params;
         const { body } = req;
@@ -84,17 +88,18 @@ module.exports = function (app) {
           return res.json({ error: "no update field(s) sent", _id });
         }
 
-        const data = await readData();
+
+        // const data = await readData();
 
         if (!data.hasOwnProperty(project)) {
-          return res.json({ error: "could not update", _id });
+          return res.json({ error: 'could not update', _id });
         }
 
         const issueIndex = data[project].findIndex((issueObj) => {
           return _id === issueObj._id;
         });
         if (issueIndex < 0) {
-          return res.json({ error: "could not update", _id });
+          return res.json({ error: 'could not update', _id })
         }
 
         const issueObj = data[project][issueIndex];
@@ -108,14 +113,14 @@ module.exports = function (app) {
         issueObj.updated_on = getDate();
 
         data[project][issueIndex] = issueObj;
-        await writeData(data);
-        return res.json({ result: "successfully updated", _id });
+        // await writeData(data);
+        return res.json({ result: 'successfully updated', _id });
       } catch (error) {
         return res.json({ error: "could not update", _id: req.body._id });
       }
     })
 
-    .delete(async function (req, res) {
+    .delete(async function(req, res) {
       try {
         const { project } = req.params;
         const { _id } = req.body;
@@ -124,7 +129,7 @@ module.exports = function (app) {
           return res.json({ error: "missing _id" });
         }
 
-        const data = await readData();
+        // const data = await readData();
 
         if (!data.hasOwnProperty(project)) {
           return res.json({ result: "Project doesn't exist" });
@@ -140,7 +145,7 @@ module.exports = function (app) {
         }
 
         data[project].splice(issueIndex, 1);
-        await writeData(data);
+        // await writeData(data);
         return res.json({ result: "successfully deleted", _id });
       } catch (error) {
         return res.json({ error: "could not delete", _id: req.body._id });
