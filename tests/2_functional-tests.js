@@ -3,98 +3,196 @@ const chai = require("chai");
 const assert = chai.assert;
 const server = require("../server");
 
-require("dotenv").config();
-
-const Browser = require("zombie");
-if (process.env.DEVELOPMENT_ENV === "true") {
-  Browser.site = "http://localhost:3000/";
-} else {
-  Browser.site = "https://my-issue-tracker-api.herokuapp.com/";
-}
-
 chai.use(chaiHttp);
 
+const path = "/api/issues/apitest";
+
 suite("Functional Tests", function () {
-  const browser = new Browser();
-
-  this.beforeEach(function (done) {
-    browser.visit("/", done);
-  });
-
+  let _id;
   test("Create an issue with every field", (done) => {
-    browser
-      .fill("#testForm input[name=issue_title]", "Issue title")
-      .then(() =>
-        browser.fill("#testForm textarea[name=issue_text]", "Issue description")
-      )
-      .then(() => browser.fill("#testForm input[name=created_by]", "John Doe"))
-      .then(() => browser.fill("#testForm input[name=assigned_to]", "Jane Doe"))
-      .then(() =>
-        browser.fill("#testForm input[name=status_text]", "In progress")
-      )
-      .then(() => browser.pressButton("#testForm button[type=submit]"))
-      .then(() => {
-        browser.assert.success("Page loaded successfully");
-        browser.assert.status(200, "Status code should be 200");
-        const element = browser.body.querySelector("#jsonResult");
-        const issueObject = JSON.parse(element.textContent);
-        assert.lengthOf(Object.keys(issueObject), 9);
-        assert.isString(issueObject._id);
-        assert.isTrue(issueObject.open);
-        assert.isString(issueObject.created_on);
-        assert.isString(issueObject.updated_on);
-        assert.include(issueObject, {
-          issue_title: "Issue title",
-          issue_text: "Issue description",
-          created_by: "John Doe",
-          assigned_to: "Jane Doe",
-          status_text: "In progress",
-        });
-
+    chai
+      .request(server)
+      .post(`${path}`)
+      .send({
+        issue_title: "Fix error in posting data",
+        issue_text: "When we post data it has an error.",
+        created_by: "Jane Doe",
+        assigned_to: "John Doe",
+        status_text: "In QA",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        _id = body._id;
+        assert.isObject(body);
         done();
       });
   });
 
   test("Create an issue with required fields", (done) => {
-    browser
-      .fill("#testForm input[name=issue_title]", "Issue title")
-      .then(() =>
-        browser.fill("#testForm textarea[name=issue_text]", "Issue description")
-      )
-      .then(() => browser.fill("#testForm input[name=created_by]", "John Doe"))
-      .then(() => browser.pressButton("#testForm button[type=submit]"))
-      .then(() => {
-        browser.assert.success("Page loaded successfully");
-        browser.assert.status(200, "Status code should be 200");
-        const element = browser.body.querySelector("#jsonResult");
-        const issueObject = JSON.parse(element.textContent);
-        assert.lengthOf(Object.keys(issueObject), 9);
-        assert.isString(issueObject._id);
-        assert.isTrue(issueObject.open);
-        assert.isString(issueObject.created_on);
-        assert.isString(issueObject.updated_on);
-        assert.include(issueObject, {
-          issue_title: "Issue title",
-          issue_text: "Issue description",
-          created_by: "John Doe",
-          assigned_to: "",
-          status_text: "",
-        });
-
+    chai
+      .request(server)
+      .put(`${path}`)
+      .send({
+        issue_title: "Fix error in posting data",
+        issue_text: "When we post data it has an error.",
+        created_by: "Tom Doe",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
         done();
       });
   });
   test("Create an issue with missing required fields", (done) => {
-    browser
-      .fill("#testForm input[name=issue_title]", "Issue title")
-      .then(() => browser.fill("#testForm input[name=created_by]", "John Doe"))
-      .then(() => browser.pressButton("#testForm button[type=submit]"))
-      .then(() => {
-        browser.assert.success("Page loaded successfully");
-        browser.assert.status(200, "Status code should be 200");
-        const element = browser.body.querySelector("#jsonResult");
-        const errorObject = JSON.parse(element.textContent);
-        assert.deepEqual(errorObject, { error: "required field(s) missing" });
+    chai
+      .request(server)
+      .post(`${path}`)
+      .send({
+        assigned_to: "John Doe",
+        status_text: "In QA",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        done();
+      });
+  });
+  test("View issues on a project", (done) => {
+    chai
+      .request(server)
+      .get(`${path}`)
+      .end((err, res) => {
+        const { body } = res;
+        assert.isArray(body);
+        assert.isAbove(body.length, 0);
+        done();
+      });
+  });
+  test("View issues on a project with one filter", (done) => {
+    chai
+      .request(server)
+      .get(`${path}?created_by=Jane Doe`)
+      .end((err, res) => {
+        const { body } = res;
+        assert.isArray(body);
+        done();
+      });
+  });
+  test("View issues on a project with multiple filters", (done) => {
+    chai
+      .request(server)
+      .get(`${path}?created_by=Jane Doe&open=true`)
+      .end((err, res) => {
+        const { body } = res;
+        assert.isArray(body);
+        done();
+      });
+  });
+  test("Update one field on an issue", (done) => {
+    chai
+      .request(server)
+      .put(`${path}`)
+      .send({
+        _id: _id,
+        created_by: "Matt Doe",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        done();
+      });
+  });
+  test("Update multiple fields on an issue", (done) => {
+    chai
+      .request(server)
+      .put(`${path}`)
+      .send({
+        _id: _id,
+        issue_title: "Modified issue title",
+        issue_text: "Modified issue text",
+        created_by: "Chris Doe",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        done();
+      });
+  });
+  test("Update an issue with missing _id", (done) => {
+    chai
+      .request(server)
+      .put(`${path}`)
+      .send({
+        created_by: "Tom Doe",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        done();
+      });
+  });
+  test("Update an issue with no fields to update", (done) => {
+    chai
+      .request(server)
+      .put(`${path}`)
+      .send({})
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        done();
+      });
+  });
+  test("Update an issue with an invalid _id", (done) => {
+    chai
+      .request(server)
+      .put(`${path}`)
+      .send({
+        _id: "Invalid id",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        done();
+      });
+  });
+  test("Delete an issue", (done) => {
+    chai
+      .request(server)
+      .delete(`${path}`)
+      .send({ _id })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        assert.deepEqual(body, { result: "successfully deleted", _id });
+        done();
+      });
+  });
+  test("Delete an issue with an invalid _id", (done) => {
+    chai
+      .request(server)
+      .delete(`${path}`)
+      .send({
+        _id: "Invalid id",
+      })
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        assert.deepEqual(body, {
+          error: "could not delete",
+          _id: "Invalid id",
+        });
+        done();
+      });
+  });
+  test("Delete an issue with missing _id", (done) => {
+    chai
+      .request(server)
+      .delete(`${path}`)
+      .send({})
+      .end((err, res) => {
+        const { body } = res;
+        assert.isObject(body);
+        assert.deepEqual(body, { error: "missing _id" });
         done();
       });
   });
