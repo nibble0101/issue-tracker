@@ -10,10 +10,6 @@ Build a full stack JavaScript app that is functionally similar to the [example a
 - Use the [Replit starter project](https://replit.com/github/freeCodeCamp/boilerplate-project-issuetracker) to complete your project.
 - Use a site builder of your choice to complete the project. Be sure to incorporate all the files from our GitHub repo.
 
-## License
-
-[MIT](./LICENSE)
-
 When you are done, make sure a working demo of your project is hosted somewhere public.
 Then submit the URL to it in the `Solution Link` field. Optionally, also submit a link to your project's source code in the `GitHub Link` field.
 
@@ -39,3 +35,7 @@ Then submit the URL to it in the `Solution Link` field. Optionally, also submit 
 - Delete an issue: `DELETE` request to `/api/issues/{project}`
 - Delete an issue with an invalid `_id`: `DELETE` request to `/api/issues/{project}`
 - Delete an issue with missing `_id`: `DELETE` request to `/api/issues/{project}`
+
+## License
+
+[MIT](./LICENSE)
