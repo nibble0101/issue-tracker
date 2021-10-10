@@ -6,6 +6,25 @@ const server = require("../server");
 chai.use(chaiHttp);
 
 const path = "/api/issues/apitest";
+const allInputFields = {
+  issue_title: "Fix error in posting data",
+  issue_text: "When we post data it has an error.",
+  created_by: "Jane Doe",
+  assigned_to: "John Doe",
+  status_text: "In QA",
+};
+
+const allKeys = [
+  "_id",
+  "issue_title",
+  "issue_text",
+  "created_on",
+  "updated_on",
+  "created_by",
+  "assigned_to",
+  "open",
+  "status_text",
+];
 
 suite("Functional Tests", function () {
   let _id;
@@ -13,17 +32,19 @@ suite("Functional Tests", function () {
     chai
       .request(server)
       .post(`${path}`)
-      .send({
-        issue_title: "Fix error in posting data",
-        issue_text: "When we post data it has an error.",
-        created_by: "Jane Doe",
-        assigned_to: "John Doe",
-        status_text: "In QA",
-      })
+      .send(allInputFields)
       .end((err, res) => {
         const { body } = res;
         _id = body._id;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.include(body, allInputFields);
+        assert.containsAllKeys(body, [
+          "_id",
+          "created_on",
+          "updated_on",
+          "open",
+        ]);
         done();
       });
   });
@@ -31,15 +52,22 @@ suite("Functional Tests", function () {
   test("Create an issue with required fields", (done) => {
     chai
       .request(server)
-      .put(`${path}`)
+      .post(`${path}`)
       .send({
         issue_title: "Fix error in posting data",
-        issue_text: "When we post data it has an error.",
+        issue_text: "When we post data it has an error",
         created_by: "Tom Doe",
       })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.equal(body.issue_title, "Fix error in posting data");
+        assert.equal(body.issue_text, "When we post data it has an error");
+        assert.equal(body.created_by, "Tom Doe");
+        assert.equal(body.open, true);
+        assert.equal(body.status_text, "");
+        assert.containsAllKeys(body, ["_id", "created_on", "updated_on"]);
         done();
       });
   });
@@ -53,7 +81,9 @@ suite("Functional Tests", function () {
       })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.deepEqual(body, { error: "required field(s) missing" });
         done();
       });
   });
@@ -63,8 +93,12 @@ suite("Functional Tests", function () {
       .get(`${path}`)
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isArray(body);
-        assert.isAbove(body.length, 0);
+        assert.equal(body.length, 2);
+        body.forEach((issueObj) => {
+          assert.containsAllKeys(issueObj, allKeys);
+        });
         done();
       });
   });
@@ -74,7 +108,11 @@ suite("Functional Tests", function () {
       .get(`${path}?created_by=Jane Doe`)
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isArray(body);
+        body.forEach((issueObj) => {
+          assert.equal(issueObj.created_by, "Jane Doe");
+        });
         done();
       });
   });
@@ -84,7 +122,12 @@ suite("Functional Tests", function () {
       .get(`${path}?created_by=Jane Doe&open=true`)
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isArray(body);
+        body.forEach((issueObj) => {
+          assert.equal(issueObj.created_by, "Jane Doe");
+          assert.equal(issueObj.open, true);
+        });
         done();
       });
   });
@@ -98,7 +141,9 @@ suite("Functional Tests", function () {
       })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.deepEqual(body, { result: "successfully updated", _id });
         done();
       });
   });
@@ -114,7 +159,9 @@ suite("Functional Tests", function () {
       })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.deepEqual(body, { result: "successfully updated", _id });
         done();
       });
   });
@@ -127,7 +174,9 @@ suite("Functional Tests", function () {
       })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.deepEqual(body, { error: "missing _id" });
         done();
       });
   });
@@ -135,10 +184,12 @@ suite("Functional Tests", function () {
     chai
       .request(server)
       .put(`${path}`)
-      .send({})
+      .send({ _id })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.deepEqual(body, { error: "no update field(s) sent", _id });
         done();
       });
   });
@@ -148,10 +199,16 @@ suite("Functional Tests", function () {
       .put(`${path}`)
       .send({
         _id: "Invalid id",
+        created_by: "Maria Doe",
       })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
+        assert.deepEqual(body, {
+          error: "could not update",
+          _id: "Invalid id",
+        });
         done();
       });
   });
@@ -162,6 +219,7 @@ suite("Functional Tests", function () {
       .send({ _id })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
         assert.deepEqual(body, { result: "successfully deleted", _id });
         done();
@@ -176,6 +234,7 @@ suite("Functional Tests", function () {
       })
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
         assert.deepEqual(body, {
           error: "could not delete",
@@ -191,6 +250,7 @@ suite("Functional Tests", function () {
       .send({})
       .end((err, res) => {
         const { body } = res;
+        assert.equal(res.status, 200);
         assert.isObject(body);
         assert.deepEqual(body, { error: "missing _id" });
         done();

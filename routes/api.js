@@ -21,6 +21,17 @@ module.exports = function(app) {
         return res.json(data[project]);
       }
 
+      // Convert "true"/"false" to boolean
+
+      if (query.hasOwnProperty("open")) {
+        if (query.open === "true") {
+          query.open = true;
+        }
+        if (query.open === "false") {
+          query.open = false;
+        }
+      }
+
       const filteredIssuesArr = data[project].filter((issueObj) => {
         for (const field in query) {
           if (query[field] !== issueObj[field]) return false;
